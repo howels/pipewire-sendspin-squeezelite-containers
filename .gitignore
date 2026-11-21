@@ -1,0 +1,7 @@
+*.tar
+*.tar.gz
+.cache/
+.idea/
+.vscode/
+*.swp
+*~

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "schedule:weekly"
+  ],
+  "labels": ["dependencies", "renovate"],
+  "timezone": "Europe/London",
+  "prConcurrentLimit": 4,
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "Group container base images",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["alpine", "debian"],
+      "groupName": "base-images"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Alpine base pin in versions.env",
+      "fileMatch": ["(^|/)versions\\.env$"],
+      "matchStrings": [
+        "# renovate: datasource=docker depName=alpine\\nALPINE_VERSION=(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "alpine",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "description": "Debian slim base pin in versions.env",
+      "fileMatch": ["(^|/)versions\\.env$"],
+      "matchStrings": [
+        "# renovate: datasource=docker depName=debian\\nDEBIAN_VERSION=(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "debian",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "description": "sendspin-cpp-cli release tag in versions.env",
+      "fileMatch": ["(^|/)versions\\.env$"],
+      "matchStrings": [
+        "# renovate: datasource=github-releases depName=(?<depName>Sendspin/sendspin-cpp-cli)\\nSENDSPIN_CLI_REF=(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "ralph-irving/squeezelite commit on master",
+      "fileMatch": ["(^|/)versions\\.env$"],
+      "matchStrings": [
+        "# renovate: datasource=git-refs depName=(?<packageName>https://github\\.com/ralph-irving/squeezelite) currentValue=(?<currentValue>\\S+)\\nSQUEEZELITE_REF=(?<currentDigest>[a-f0-9]{40})"
+      ],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "ralph-irving/squeezelite"
+    }
+  ]
+}
