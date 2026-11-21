@@ -43,8 +43,26 @@ start_pipewire() {
 
   wait_for_server
   wait_for_sink
-  pactl set-default-sink sendspin
-  pactl set-default-source sendspin.monitor
+  # PipeWire sometimes returns "Not supported" on the first set-default;
+  # retry rather than exiting under set -e.
+  i=0
+  while ! pactl set-default-sink sendspin >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -gt 50 ]; then
+      echo "timed out setting default sink sendspin" >&2
+      exit 1
+    fi
+    sleep 0.2
+  done
+  i=0
+  while ! pactl set-default-source sendspin.monitor >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -gt 50 ]; then
+      echo "timed out setting default source sendspin.monitor" >&2
+      exit 1
+    fi
+    sleep 0.2
+  done
 
   # Stay as PID 1's waited child: exit when pipewire-pulse exits.
   wait "${pulse_pid}"

@@ -1,0 +1,28 @@
+# Example values. Point images at GHCR builds from this repository.
+# Production overlay pattern: argo-charts-values/clusters/*/apps/workloads/ledfx/values.yaml
+
+names:
+  app: ledfx
+  pulseClientConfig: ledfx-pulse-client
+  dataClaim: ledfx-data
+  sendspinClaim: sendspin-data
+
+hostname: ledfx
+
+images:
+  pipewire:
+    repository: ghcr.io/howels/pipewire
+    tag: latest
+  sendspin:
+    repository: ghcr.io/howels/sendspin
+    tag: latest
+  ledfx:
+    repository: docker.io/ledfxorg/ledfx
+    tag: "2.2.1"
+
+sendspin:
+  server: "192.168.0.190"
+
+persistence:
+  size: 1Gi
+  storageClassName: ""

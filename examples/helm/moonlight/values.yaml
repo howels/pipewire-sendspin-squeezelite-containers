@@ -1,0 +1,36 @@
+# Example values. Point images at GHCR builds from this repository.
+# Production overlay pattern: argo-charts-values/clusters/*/apps/workloads/moonlight/values.yaml
+
+names:
+  app: moonlight
+  pulseClientConfig: moonlight-pulse-client
+  dataClaim: moonlight-data
+  sendspinClaim: sendspin-data
+
+playername: moonlight
+
+images:
+  pipewire:
+    repository: ghcr.io/howels/pipewire
+    tag: latest
+  sendspin:
+    repository: ghcr.io/howels/sendspin
+    tag: latest
+  squeezelite:
+    repository: ghcr.io/howels/squeezelite
+    tag: latest
+  moonlight:
+    repository: ghcr.io/moonmodules/moonlight
+    tag: "7.1.0-dev.153"
+
+sendspin:
+  server: "192.168.0.190"
+  audioFormat: "flac:22050:16:2"
+
+squeezelite:
+  # Empty inherits sendspin.server
+  server: ""
+
+persistence:
+  size: 1Gi
+  storageClassName: ""

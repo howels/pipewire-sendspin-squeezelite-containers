@@ -1,0 +1,116 @@
+{{- $sendspinServer := required "sendspin.server is required" .Values.sendspin.server }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ledfx.app" . }}
+  namespace: {{ include "ledfx.namespace" . }}
+  labels:
+    app: {{ include "ledfx.app" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "ledfx.app" . }}
+  strategy:
+    type: Recreate
+    rollingUpdate: null
+  template:
+    metadata:
+      labels:
+        app: {{ include "ledfx.app" . }}
+    spec:
+      hostname: {{ required "hostname is required" .Values.hostname | quote }}
+      restartPolicy: Always
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: pipewire
+          image: {{ include "ledfx.image" (dict "root" . "key" "pipewire") }}
+          imagePullPolicy: Always
+          env:
+            - name: XDG_RUNTIME_DIR
+              value: /run/pulse/runtime
+            - name: PULSE_RUNTIME_PATH
+              value: /run/pulse/runtime
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "test -S /run/pulse/runtime/native"]
+            initialDelaySeconds: 1
+            periodSeconds: 2
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+        - name: sendspin
+          image: {{ include "ledfx.image" (dict "root" . "key" "sendspin") }}
+          imagePullPolicy: Always
+          args:
+            - daemon
+            - --name
+            - {{ printf "%s-sendspin" .Values.hostname | quote }}
+            - --url
+            - ws://${SENDSPIN_SERVER}:8927/sendspin
+            - --settings-dir
+            - /data
+          env:
+            - name: SENDSPIN_SERVER
+              value: {{ $sendspinServer | quote }}
+            - name: PULSE_SERVER
+              value: unix:/run/pulse/runtime/native
+            - name: XDG_RUNTIME_DIR
+              value: /tmp
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+            - name: sendspin-data
+              mountPath: /data
+        - name: ledfx
+          image: {{ include "ledfx.image" (dict "root" . "key" "ledfx") }}
+          imagePullPolicy: Always
+          args:
+            - -v
+            - --pause-all
+          env:
+            - name: PULSECLIENTMODE
+              value: "1"
+            - name: PULSE_SERVER
+              value: unix:/run/pulse/runtime/native
+            - name: XDG_RUNTIME_DIR
+              value: /tmp
+            - name: HOME
+              value: /data
+            - name: XDG_DATA_HOME
+              value: /data
+          ports:
+            - containerPort: 8888
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: 8888
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+            - name: pulse-client
+              mountPath: /etc/pulse/client.conf
+              subPath: client.conf
+            - name: ledfx-data
+              mountPath: /data
+            - name: ledfx-tmp
+              mountPath: /tmp
+      volumes:
+        - name: pulse-runtime
+          emptyDir: {}
+        - name: ledfx-tmp
+          emptyDir: {}
+        - name: pulse-client
+          configMap:
+            name: {{ include "ledfx.pulseClientConfig" . }}
+        - name: ledfx-data
+          persistentVolumeClaim:
+            claimName: {{ include "ledfx.dataClaim" . }}
+        - name: sendspin-data
+          persistentVolumeClaim:
+            claimName: {{ include "ledfx.sendspinClaim" . }}

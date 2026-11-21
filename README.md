@@ -71,16 +71,38 @@ PULSE_SERVER=unix:/run/pulse/runtime/native
 
 Mount a shared volume at `/run/pulse`. The pipewire image creates `/run/pulse/runtime` mode `0700`, starts PipeWire + WirePlumber + `pipewire-pulse`, and listens on `native` with unrestricted Pulse client access. Clients set `XDG_RUNTIME_DIR=/tmp` and ship `autospawn = no` in `/etc/pulse/client.conf`. Sink `sendspin` and source `sendspin.monitor` remain the defaults.
 
-## Local build
+## Local build and smoke
 
 ```bash
 make build TAG=dev PLATFORM=linux/amd64
+make smoke TAG=dev
 ```
+
+`scripts/smoke.sh` starts `localhost/pipewire:dev`, then checks that `sendspin` and `squeezelite` reach `sendspin.monitor` on the shared volume (same contract as `kubernetes-cluster/moonlight/scripts/smoke.sh`).
 
 Push (needs `podman login ghcr.io`):
 
 ```bash
 make push TAG=dev PLATFORM=linux/amd64
+```
+
+## Examples (MoonLight and LedFx)
+
+Podman Pods and illustrative Helm charts live under `examples/`. They follow the layouts in:
+
+- `kubernetes-cluster/moonlight/moonlight-podman.yaml`
+- `kubernetes-cluster/ledfx/ledfx-study.yaml`
+- `argo-charts-values/charts/local/moonlight`
+- `argo-charts-values/charts/local/ledfx`
+
+See [examples/README.md](examples/README.md).
+
+```bash
+podman kube play examples/podman/moonlight-pod.yaml
+podman kube play examples/podman/ledfx-pod.yaml
+
+helm template moonlight examples/helm/moonlight --namespace moonlight
+helm template ledfx examples/helm/ledfx --namespace ledfx
 ```
 
 ## CI

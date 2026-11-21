@@ -1,0 +1,10 @@
+apiVersion: v2
+name: moonlight-pipewire-example
+description: >
+  Example Kubernetes chart for MoonLight with PipeWire, sendspin-cli, and
+  squeezelite. Illustrates the multi-container Pod pattern used by
+  argo-charts-values/charts/local/moonlight. Not a replacement for that chart;
+  it omits Multus NAD, HTTPRoute, and cluster identity wiring.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

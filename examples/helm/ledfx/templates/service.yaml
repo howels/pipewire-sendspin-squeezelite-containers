@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ledfx.app" . }}
+  namespace: {{ include "ledfx.namespace" . }}
+  labels:
+    app: {{ include "ledfx.app" . }}
+spec:
+  selector:
+    app: {{ include "ledfx.app" . }}
+  ports:
+    - name: http
+      port: 8888
+      targetPort: 8888
+      protocol: TCP

@@ -1,0 +1,133 @@
+{{- $sendspinServer := required "sendspin.server is required" .Values.sendspin.server }}
+{{- $player := required "playername is required" .Values.playername }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "moonlight.app" . }}
+  namespace: {{ include "moonlight.namespace" . }}
+  labels:
+    app: {{ include "moonlight.app" . }}
+spec:
+  serviceName: {{ include "moonlight.app" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "moonlight.app" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "moonlight.app" . }}
+    spec:
+      restartPolicy: Always
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: pipewire
+          image: {{ include "moonlight.image" (dict "root" . "key" "pipewire") }}
+          imagePullPolicy: Always
+          env:
+            - name: XDG_RUNTIME_DIR
+              value: /run/pulse/runtime
+            - name: PULSE_RUNTIME_PATH
+              value: /run/pulse/runtime
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "test -S /run/pulse/runtime/native"]
+            initialDelaySeconds: 1
+            periodSeconds: 2
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+        - name: sendspin
+          image: {{ include "moonlight.image" (dict "root" . "key" "sendspin") }}
+          imagePullPolicy: Always
+          args:
+            - daemon
+            - --name
+            - {{ printf "%s-sendspin" $player | quote }}
+            - --url
+            - ws://${SENDSPIN_SERVER}:8927/sendspin
+            - --audio-format
+            - {{ .Values.sendspin.audioFormat | quote }}
+            - --settings-dir
+            - /data
+          env:
+            - name: SENDSPIN_SERVER
+              value: {{ $sendspinServer | quote }}
+            - name: PULSE_SERVER
+              value: unix:/run/pulse/runtime/native
+            - name: XDG_RUNTIME_DIR
+              value: /tmp
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+            - name: sendspin-data
+              mountPath: /data
+        - name: squeezelite
+          image: {{ include "moonlight.image" (dict "root" . "key" "squeezelite") }}
+          imagePullPolicy: Always
+          args:
+            - -n
+            - {{ printf "%s-squeezelite" $player | quote }}
+            - -s
+            - ${SQUEEZELITE_SERVER}
+            - -U
+            - Master
+          env:
+            - name: SQUEEZELITE_SERVER
+              value: {{ default $sendspinServer .Values.squeezelite.server | quote }}
+            - name: PULSE_SERVER
+              value: unix:/run/pulse/runtime/native
+            - name: XDG_RUNTIME_DIR
+              value: /tmp
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+        - name: moonlight
+          image: {{ include "moonlight.image" (dict "root" . "key" "moonlight") }}
+          imagePullPolicy: Always
+          command: ["/usr/bin/MoonLight"]
+          args: ["--no-browser"]
+          env:
+            - name: PULSE_SERVER
+              value: unix:/run/pulse/runtime/native
+            - name: XDG_RUNTIME_DIR
+              value: /tmp
+            - name: HOME
+              value: /data
+            - name: XDG_DATA_HOME
+              value: /data
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: pulse-runtime
+              mountPath: /run/pulse
+            - name: pulse-client
+              mountPath: /etc/pulse/client.conf
+              subPath: client.conf
+            - name: moonlight-data
+              mountPath: /data
+            - name: moonlight-tmp
+              mountPath: /tmp
+      volumes:
+        - name: pulse-runtime
+          emptyDir: {}
+        - name: moonlight-tmp
+          emptyDir: {}
+        - name: pulse-client
+          configMap:
+            name: {{ include "moonlight.pulseClientConfig" . }}
+        - name: moonlight-data
+          persistentVolumeClaim:
+            claimName: {{ include "moonlight.dataClaim" . }}
+        - name: sendspin-data
+          persistentVolumeClaim:
+            claimName: {{ include "moonlight.sendspinClaim" . }}

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: ledfx-pipewire-example
+description: >
+  Example Kubernetes chart for LedFx with PipeWire and sendspin-cli.
+  Illustrates the multi-container Pod pattern used by
+  argo-charts-values/charts/local/ledfx. Not a replacement for that chart;
+  it omits HTTPRoute and cluster identity wiring.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

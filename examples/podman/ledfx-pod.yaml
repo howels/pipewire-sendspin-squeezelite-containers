@@ -1,0 +1,159 @@
+# Podman kube play example: LedFx + PipeWire + sendspin-cli.
+#
+# Derived from kubernetes-cluster/ledfx/ledfx-study.yaml and the
+# argo-charts-values/charts/local/ledfx Deployment layout. The audio server
+# is ghcr.io/howels/pipewire (pipewire-pulse). Null sink sendspin is built
+# into that image; no default.pa ConfigMap mount is required.
+#
+#   podman kube play examples/podman/ledfx-pod.yaml
+#   podman kube down examples/podman/ledfx-pod.yaml
+#
+# Set SENDSPIN_SERVER to your Music Assistant host before play, or edit the
+# env value below. Bind-mount paths under volume.podman.io/device are host
+# paths; change them for your machine.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ledfx-pulse-client
+  namespace: ledfx
+data:
+  client.conf: |
+    autospawn = no
+    default-server = unix:/run/pulse/runtime/native
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ledfx-data
+  namespace: ledfx
+  annotations:
+    volume.podman.io/driver: local
+    volume.podman.io/device: /home/ledfx/.local/share/LedFx/
+    volume.podman.io/type: none
+    volume.podman.io/mount-options: bind
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sendspin-data
+  namespace: ledfx
+  annotations:
+    volume.podman.io/driver: local
+    volume.podman.io/device: /home/ledfx/.config/sendspin
+    volume.podman.io/type: none
+    volume.podman.io/mount-options: bind
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ledfx
+  namespace: ledfx
+  labels:
+    app: ledfx
+spec:
+  hostname: ledfx
+  restartPolicy: Always
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containers:
+    - name: pipewire
+      image: ghcr.io/howels/pipewire:latest
+      imagePullPolicy: Always
+      env:
+        - name: XDG_RUNTIME_DIR
+          value: /run/pulse/runtime
+        - name: PULSE_RUNTIME_PATH
+          value: /run/pulse/runtime
+      readinessProbe:
+        exec:
+          command: ["/bin/sh", "-c", "test -S /run/pulse/runtime/native"]
+        initialDelaySeconds: 1
+        periodSeconds: 2
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+    - name: sendspin
+      image: ghcr.io/howels/sendspin:latest
+      imagePullPolicy: Always
+      args:
+        - daemon
+        - --name
+        - ledfx-sendspin
+        - --url
+        - ws://${SENDSPIN_SERVER}:8927/sendspin
+        - --settings-dir
+        - /data
+      env:
+        - name: SENDSPIN_SERVER
+          value: "192.168.0.190"
+        - name: PULSE_SERVER
+          value: unix:/run/pulse/runtime/native
+        - name: XDG_RUNTIME_DIR
+          value: /tmp
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+        - name: sendspin-data
+          mountPath: /data
+    - name: ledfx
+      image: docker.io/ledfxorg/ledfx:2.2.1
+      imagePullPolicy: Always
+      args:
+        - -v
+        - --pause-all
+      env:
+        - name: PULSECLIENTMODE
+          value: "1"
+        - name: PULSE_SERVER
+          value: unix:/run/pulse/runtime/native
+        - name: XDG_RUNTIME_DIR
+          value: /tmp
+        - name: HOME
+          value: /data
+        - name: XDG_DATA_HOME
+          value: /data
+      ports:
+        - containerPort: 8888
+          protocol: TCP
+      readinessProbe:
+        tcpSocket:
+          port: 8888
+        initialDelaySeconds: 2
+        periodSeconds: 5
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+        - name: pulse-client
+          mountPath: /etc/pulse/client.conf
+          subPath: client.conf
+        - name: ledfx-data
+          mountPath: /data
+        - name: ledfx-tmp
+          mountPath: /tmp
+  volumes:
+    - name: pulse-runtime
+      emptyDir: {}
+    - name: ledfx-tmp
+      emptyDir: {}
+    - name: ledfx-data
+      persistentVolumeClaim:
+        claimName: ledfx-data
+    - name: sendspin-data
+      persistentVolumeClaim:
+        claimName: sendspin-data
+    - name: pulse-client
+      configMap:
+        name: ledfx-pulse-client

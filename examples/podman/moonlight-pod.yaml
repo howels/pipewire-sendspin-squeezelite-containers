@@ -1,0 +1,178 @@
+# Podman kube play example: MoonLight + PipeWire + sendspin-cli + squeezelite.
+#
+# Derived from kubernetes-cluster/moonlight/moonlight-podman.yaml and the
+# argo-charts-values/charts/local/moonlight StatefulSet layout. The audio
+# server is ghcr.io/howels/pipewire (pipewire-pulse). Null sink sendspin is
+# built into that image; no default.pa ConfigMap mount is required.
+#
+#   podman kube play examples/podman/moonlight-pod.yaml
+#   podman kube down examples/podman/moonlight-pod.yaml
+#
+# Set SENDSPIN_SERVER / SQUEEZELITE_SERVER to your Music Assistant host before
+# play, or edit the env values below. Bind-mount paths under
+# volume.podman.io/device are host paths; change them for your machine.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moonlight-pulse-client
+  namespace: moonlight
+data:
+  client.conf: |
+    autospawn = no
+    default-server = unix:/run/pulse/runtime/native
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moonlight-data
+  namespace: moonlight
+  annotations:
+    volume.podman.io/driver: local
+    volume.podman.io/device: /home/moonlight/.local/share/MoonLight/
+    volume.podman.io/type: none
+    volume.podman.io/mount-options: bind
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sendspin-data
+  namespace: moonlight
+  annotations:
+    volume.podman.io/driver: local
+    volume.podman.io/device: /home/moonlight/.config/sendspin
+    volume.podman.io/type: none
+    volume.podman.io/mount-options: bind
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moonlight
+  namespace: moonlight
+  labels:
+    app: moonlight
+spec:
+  hostname: moonlight
+  restartPolicy: Always
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containers:
+    - name: pipewire
+      image: ghcr.io/howels/pipewire:latest
+      imagePullPolicy: Always
+      env:
+        - name: XDG_RUNTIME_DIR
+          value: /run/pulse/runtime
+        - name: PULSE_RUNTIME_PATH
+          value: /run/pulse/runtime
+      readinessProbe:
+        exec:
+          command: ["/bin/sh", "-c", "test -S /run/pulse/runtime/native"]
+        initialDelaySeconds: 1
+        periodSeconds: 2
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+    - name: sendspin
+      image: ghcr.io/howels/sendspin:latest
+      imagePullPolicy: Always
+      args:
+        - daemon
+        - --name
+        - moonlight-sendspin
+        - --url
+        - ws://${SENDSPIN_SERVER}:8927/sendspin
+        - --audio-format
+        - flac:22050:16:2
+        - --settings-dir
+        - /data
+      env:
+        - name: SENDSPIN_SERVER
+          value: "192.168.0.190"
+        - name: PULSE_SERVER
+          value: unix:/run/pulse/runtime/native
+        - name: XDG_RUNTIME_DIR
+          value: /tmp
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+        - name: sendspin-data
+          mountPath: /data
+    - name: squeezelite
+      image: ghcr.io/howels/squeezelite:latest
+      imagePullPolicy: Always
+      args:
+        - -n
+        - moonlight-squeezelite
+        - -s
+        - ${SQUEEZELITE_SERVER}
+        - -U
+        - Master
+      env:
+        - name: SQUEEZELITE_SERVER
+          value: "192.168.0.190"
+        - name: PULSE_SERVER
+          value: unix:/run/pulse/runtime/native
+        - name: XDG_RUNTIME_DIR
+          value: /tmp
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+    - name: moonlight
+      image: ghcr.io/moonmodules/moonlight:7.1.0-dev.153
+      imagePullPolicy: Always
+      command: ["/usr/bin/MoonLight"]
+      args: ["--no-browser"]
+      env:
+        - name: PULSE_SERVER
+          value: unix:/run/pulse/runtime/native
+        - name: XDG_RUNTIME_DIR
+          value: /tmp
+        - name: HOME
+          value: /data
+        - name: XDG_DATA_HOME
+          value: /data
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      readinessProbe:
+        tcpSocket:
+          port: 8080
+        initialDelaySeconds: 2
+        periodSeconds: 5
+      volumeMounts:
+        - name: pulse-runtime
+          mountPath: /run/pulse
+        - name: pulse-client
+          mountPath: /etc/pulse/client.conf
+          subPath: client.conf
+        - name: moonlight-data
+          mountPath: /data
+        - name: moonlight-tmp
+          mountPath: /tmp
+  volumes:
+    - name: pulse-runtime
+      emptyDir: {}
+    - name: moonlight-tmp
+      emptyDir: {}
+    - name: moonlight-data
+      persistentVolumeClaim:
+        claimName: moonlight-data
+    - name: sendspin-data
+      persistentVolumeClaim:
+        claimName: sendspin-data
+    - name: pulse-client
+      configMap:
+        name: moonlight-pulse-client
