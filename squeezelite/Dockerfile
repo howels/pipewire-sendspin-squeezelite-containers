@@ -2,7 +2,7 @@
 # Build ralph-irving/squeezelite with PulseAudio output on Alpine, then copy
 # the single binary into a runtime image with only the shared libraries it needs.
 
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.24
 
 FROM alpine:${ALPINE_VERSION} AS build
 

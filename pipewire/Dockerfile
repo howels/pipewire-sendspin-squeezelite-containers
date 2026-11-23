@@ -3,7 +3,7 @@
 # socket API that sendspin, squeezelite, and MoonLight already use.
 # Alpine 3.22 ships PipeWire 1.4.x (newer than Debian trixie's 1.4.2).
 
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.24
 FROM alpine:${ALPINE_VERSION}
 
 RUN apk add --no-cache \
