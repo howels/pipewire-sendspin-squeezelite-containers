@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.29
 # Build ralph-irving/squeezelite with PulseAudio output on Alpine, then copy
 # the single binary into a runtime image with only the shared libraries it needs.
 
