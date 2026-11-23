@@ -1,0 +1,66 @@
+# One-shot / occasional GHCR tag maintenance.
+# Publishes prefixed upstream aliases from a container release tag and
+# removes bare upstream semver tags that confuse chart Renovate.
+name: GHCR retag aliases
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Container release tag to copy from (e.g. v1.0.0)
+        required: true
+        default: v1.0.0
+      sendspin_cli_ref:
+        description: sendspin-cpp-cli pin (with leading v)
+        required: true
+        default: v1.0.1
+      alpine_version:
+        description: Alpine base pin for pipewire alias
+        required: true
+        default: "3.22"
+      delete_bare_sendspin_cli_tag:
+        description: Delete ghcr.io/howels/sendspin:<sendspin_cli_ref> if present
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  retag:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+
+      - name: Publish prefixed aliases from release tag
+        env:
+          REL: ${{ inputs.release_tag }}
+          CLI: ${{ inputs.sendspin_cli_ref }}
+          ALP: ${{ inputs.alpine_version }}
+        run: |
+          set -eux
+          crane copy "$REGISTRY/$OWNER/sendspin:$REL" "$REGISTRY/$OWNER/sendspin:cli-${CLI}"
+          crane copy "$REGISTRY/$OWNER/pipewire:$REL" "$REGISTRY/$OWNER/pipewire:alpine-${ALP}"
+          # squeezelite already uses git-<sha>; nothing to fix for v1.0.0
+
+      - name: Delete bare sendspin CLI tag (looks like a container release)
+        if: inputs.delete_bare_sendspin_cli_tag
+        env:
+          CLI: ${{ inputs.sendspin_cli_ref }}
+        run: |
+          set -eux
+          if crane digest "$REGISTRY/$OWNER/sendspin:${CLI}" >/dev/null 2>&1; then
+            crane delete "$REGISTRY/$OWNER/sendspin:${CLI}"
+            echo "deleted $REGISTRY/$OWNER/sendspin:${CLI}"
+          else
+            echo "tag not present: $REGISTRY/$OWNER/sendspin:${CLI}"
+          fi
