@@ -54,7 +54,9 @@ while [ "$i" -le "$n" ]; do
   i=$((i + 1))
 done
 
-# Default to the Pulse null sink when the caller did not name an output.
+# Default to the Pulse default sink when the caller did not name an output.
+# The pipewire image's null sink is named sendspin and is the default; -o pulse
+# is not a sink name and fails with "unable to open output device: pulse".
 has_output=0
 for arg in "$@"; do
   case "$arg" in
@@ -62,7 +64,7 @@ for arg in "$@"; do
   esac
 done
 if [ "$has_output" -eq 0 ]; then
-  set -- -o "${SQUEEZELITE_OUTPUT:-pulse}" "$@"
+  set -- -o "${SQUEEZELITE_OUTPUT:-default}" "$@"
 fi
 
 echo "exec squeezelite $*" >&2

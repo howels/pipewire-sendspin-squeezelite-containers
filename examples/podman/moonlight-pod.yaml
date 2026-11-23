@@ -118,8 +118,8 @@ spec:
         - moonlight-squeezelite
         - -s
         - ${SQUEEZELITE_SERVER}
-        - -U
-        - Master
+        - -o
+        - default
       env:
         - name: SQUEEZELITE_SERVER
           value: "192.168.0.190"
