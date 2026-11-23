@@ -6,38 +6,64 @@
     ":dependencyDashboard",
     "schedule:weekly"
   ],
-  "labels": ["dependencies", "renovate"],
+  "labels": [
+    "dependencies",
+    "renovate"
+  ],
   "timezone": "Europe/London",
   "prConcurrentLimit": 4,
   "packageRules": [
     {
       "description": "Group GitHub Actions",
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "github-actions"
     },
     {
-      "description": "Group container base images",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["alpine", "debian"],
-      "groupName": "base-images"
+      "description": "versions.env is the sole pin for alpine/debian. Ignore Dockerfile ARG/FROM copies so Renovate does not dual-update (3.24.4 vs 3.24) or emit replaceString misses.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "alpine",
+        "debian"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Group container base images from versions.env; pin Alpine to major.minor tags (not 3.24.4 patch tags).",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "alpine",
+        "debian"
+      ],
+      "groupName": "base-images",
+      "allowedVersions": "/^(\\d+\\.\\d+|trixie-slim)$/"
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
       "description": "Alpine base pin in versions.env",
-      "fileMatch": ["(^|/)versions\\.env$"],
+      "managerFilePatterns": [
+        "/(^|/)versions\\.env$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=docker depName=alpine\\nALPINE_VERSION=(?<currentValue>\\S+)"
       ],
       "datasourceTemplate": "docker",
       "depNameTemplate": "alpine",
-      "versioningTemplate": "loose"
+      "versioningTemplate": "docker"
     },
     {
       "customType": "regex",
       "description": "Debian slim base pin in versions.env",
-      "fileMatch": ["(^|/)versions\\.env$"],
+      "managerFilePatterns": [
+        "/(^|/)versions\\.env$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=docker depName=debian\\nDEBIAN_VERSION=(?<currentValue>\\S+)"
       ],
@@ -48,7 +74,9 @@
     {
       "customType": "regex",
       "description": "sendspin-cpp-cli release tag in versions.env",
-      "fileMatch": ["(^|/)versions\\.env$"],
+      "managerFilePatterns": [
+        "/(^|/)versions\\.env$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=github-releases depName=(?<depName>Sendspin/sendspin-cpp-cli)\\nSENDSPIN_CLI_REF=(?<currentValue>\\S+)"
       ],
@@ -57,7 +85,9 @@
     {
       "customType": "regex",
       "description": "ralph-irving/squeezelite commit on master",
-      "fileMatch": ["(^|/)versions\\.env$"],
+      "managerFilePatterns": [
+        "/(^|/)versions\\.env$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=git-refs depName=(?<packageName>https://github\\.com/ralph-irving/squeezelite) currentValue=(?<currentValue>\\S+)\\nSQUEEZELITE_REF=(?<currentDigest>[a-f0-9]{40})"
       ],
