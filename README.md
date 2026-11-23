@@ -122,7 +122,7 @@ Renovate needs a repository secret `RENOVATE_TOKEN` (PAT with `repo` and `workfl
 | `alpine-3.22` | Alpine base that ships PipeWire (pipewire image only) | Human / skopeo |
 | `latest`, `sha-*` | Floating from `main` | Ignored by chart Renovate |
 
-Upstream package bumps are Renovate’d in this repo via `versions.env`. After merge, cut a new container `v*` release; chart Renovate then moves the chart pins. Do **not** publish bare upstream semver as an image tag (that made `sendspin:v1.0.1` look like a newer container than `v1.0.0`).
+Upstream package bumps are Renovate’d in this repo via `versions.env`. After merge, cut a new container `v*` release; chart Renovate then moves the chart pins (it reads **GitHub Releases** for this repo, not the GHCR tag list, so floating/alias tags cannot look like newer containers). Do **not** publish bare upstream semver as an image tag (that made `sendspin:v1.0.1` look like a newer container than `v1.0.0`). GHCR does not support registry `DELETE` for a single tag when it shares a digest with a release; remove orphans in the package UI if needed.
 
 ## Image layout
 

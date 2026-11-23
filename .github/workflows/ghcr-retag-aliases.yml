@@ -52,15 +52,26 @@ jobs:
           crane copy "$REGISTRY/$OWNER/pipewire:$REL" "$REGISTRY/$OWNER/pipewire:alpine-${ALP}"
           # squeezelite already uses git-<sha>; nothing to fix for v1.0.0
 
-      - name: Delete bare sendspin CLI tag (looks like a container release)
+      # GHCR rejects registry DELETE for tags (UNSUPPORTED). When the bare CLI
+      # tag shares a digest with vX.Y.Z, Packages API version-delete would also
+      # remove the release tag. Chart Renovate uses github-releases, so the
+      # orphan tag is harmless; delete manually in the GHCR UI if desired.
+      - name: Note bare sendspin CLI tag (cannot untag via registry API)
         if: inputs.delete_bare_sendspin_cli_tag
         env:
           CLI: ${{ inputs.sendspin_cli_ref }}
+          REL: ${{ inputs.release_tag }}
         run: |
-          set -eux
-          if crane digest "$REGISTRY/$OWNER/sendspin:${CLI}" >/dev/null 2>&1; then
-            crane delete "$REGISTRY/$OWNER/sendspin:${CLI}"
-            echo "deleted $REGISTRY/$OWNER/sendspin:${CLI}"
-          else
+          set -u
+          if ! crane digest "$REGISTRY/$OWNER/sendspin:${CLI}" >/dev/null 2>&1; then
             echo "tag not present: $REGISTRY/$OWNER/sendspin:${CLI}"
+            exit 0
           fi
+          d_cli=$(crane digest "$REGISTRY/$OWNER/sendspin:${CLI}")
+          d_rel=$(crane digest "$REGISTRY/$OWNER/sendspin:${REL}" || true)
+          echo "bare tag $REGISTRY/$OWNER/sendspin:${CLI} digest=$d_cli"
+          echo "release  $REGISTRY/$OWNER/sendspin:${REL} digest=$d_rel"
+          if [ -n "$d_rel" ] && [ "$d_cli" = "$d_rel" ]; then
+            echo "Same digest as ${REL}: refusing Packages version-delete (would remove the release tag too)."
+          fi
+          echo "Leave the bare tag, or remove it in the GHCR package UI. Chart Renovate tracks GitHub Releases only."
