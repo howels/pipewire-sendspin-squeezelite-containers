@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@v43.0.8
+        uses: renovatebot/github-action@v43.0.20
         with:
           # Create a fine-grained or classic PAT with repo + workflow scope and
           # store it as RENOVATE_TOKEN. GITHUB_TOKEN cannot open PRs from Actions
