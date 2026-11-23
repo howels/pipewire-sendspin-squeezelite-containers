@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.29
 # Multi-stage build of sendspin-cpp-cli with the native PulseAudio backend
 # only. PortAudio and PipeWire stay off so the runtime image stays small.
 

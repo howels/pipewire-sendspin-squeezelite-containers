@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.29
 # PipeWire provides the graph; pipewire-pulse keeps the PulseAudio Unix
 # socket API that sendspin, squeezelite, and MoonLight already use.
 # Alpine 3.22 ships PipeWire 1.4.x (newer than Debian trixie's 1.4.2).
