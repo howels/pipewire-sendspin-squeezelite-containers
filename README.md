@@ -112,6 +112,18 @@ helm template ledfx examples/helm/ledfx --namespace ledfx
 
 Renovate needs a repository secret `RENOVATE_TOKEN` (PAT with `repo` and `workflow`). Alternatively install the [Renovate GitHub App](https://github.com/apps/renovate) on this repository and disable the workflow.
 
+### Image tags (two layers)
+
+| Tag | Meaning | Renovate |
+|-----|---------|----------|
+| `v1.0.0` | Container release ([GitHub Releases](https://github.com/howels/pipewire-sendspin-squeezelite-containers/releases)) | Charts pin these (`/^v\d+\.\d+\.\d+$/`) |
+| `cli-v1.0.1` | Bundled `sendspin-cpp-cli` (sendspin image only) | Human / skopeo; not a chart pin |
+| `git-<sha>` | Bundled squeezelite commit (squeezelite image only; upstream has no semver) | Human / skopeo |
+| `alpine-3.22` | Alpine base that ships PipeWire (pipewire image only) | Human / skopeo |
+| `latest`, `sha-*` | Floating from `main` | Ignored by chart Renovate |
+
+Upstream package bumps are Renovate’d in this repo via `versions.env`. After merge, cut a new container `v*` release; chart Renovate then moves the chart pins. Do **not** publish bare upstream semver as an image tag (that made `sendspin:v1.0.1` look like a newer container than `v1.0.0`).
+
 ## Image layout
 
 - `pipewire/` — Alpine; PipeWire + `pipewire-pulse` + WirePlumber (`pactl` from `pulseaudio-utils`)

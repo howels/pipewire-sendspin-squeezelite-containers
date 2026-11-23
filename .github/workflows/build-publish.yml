@@ -64,6 +64,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Tag scheme (keep chart Renovate on /^v\d+\.\d+\.\d+$/ only):
+      #   v1.0.0          — container release (git tag / type=ref)
+      #   latest, sha-*   — floating (main)
+      #   cli-v1.0.1      — bundled sendspin-cpp-cli pin (not a container release)
+      #   git-<sha>       — bundled squeezelite commit (upstream has no semver)
+      #   alpine-3.22     — Alpine base that carries PipeWire
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -73,8 +79,9 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
             type=ref,event=tag
-            type=raw,value=${{ steps.versions.outputs.SENDSPIN_CLI_REF }},enable=${{ matrix.image == 'sendspin' }}
+            type=raw,value=${{ steps.versions.outputs.SENDSPIN_CLI_REF }},enable=${{ matrix.image == 'sendspin' }},prefix=cli-
             type=raw,value=${{ steps.versions.outputs.SQUEEZELITE_REF }},enable=${{ matrix.image == 'squeezelite' }},prefix=git-
+            type=raw,value=${{ steps.versions.outputs.ALPINE_VERSION }},enable=${{ matrix.image == 'pipewire' }},prefix=alpine-
 
       - name: Build and push
         uses: docker/build-push-action@v6
