@@ -73,8 +73,8 @@ spec:
             - {{ printf "%s-squeezelite" $player | quote }}
             - -s
             - ${SQUEEZELITE_SERVER}
-            - -U
-            - Master
+            - -o
+            - default
           env:
             - name: SQUEEZELITE_SERVER
               value: {{ default $sendspinServer .Values.squeezelite.server | quote }}

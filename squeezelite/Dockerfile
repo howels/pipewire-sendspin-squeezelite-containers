@@ -66,7 +66,7 @@ USER 1000:1000
 ENV HOME=/home/squeezelite \
     XDG_RUNTIME_DIR=/tmp \
     PULSE_SERVER=unix:/run/pulse/runtime/native \
-    SQUEEZELITE_OUTPUT=pulse
+    SQUEEZELITE_OUTPUT=default
 
 ENTRYPOINT ["/usr/local/bin/squeezelite-entrypoint"]
-CMD ["-n", "squeezelite", "-o", "pulse"]
+CMD ["-n", "squeezelite", "-o", "default"]
